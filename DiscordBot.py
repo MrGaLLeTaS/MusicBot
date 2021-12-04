@@ -37,12 +37,15 @@ async def roll(ctx):
 
 
 queue = []
+
+
 @client.command()
 async def play(ctx, url):
     if not ctx.message.author.voice:
         await ctx.send("Дурак что-ли. зайди сначала в гс")
     else:
-        try:
+        voice_client = get(client.voice_clients, guild=ctx.guild)
+        if voice_client is None or not voice_client.is_connected():
             await ctx.message.author.voice.channel.connect()
             YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
             FFMPEG_OPTIONS = {
@@ -64,12 +67,30 @@ async def play(ctx, url):
                         embed.set_thumbnail(url=THUMBNAIL)
                         await ctx.send(embed=embed)
                         break
-
                 else:
                     await ctx.send('Я уже играю!')
                     return
-        except:
-            await ctx.send("Я уже с тобой, зачем снова просишь меня зайти?")
+        else:
+            YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
+            FFMPEG_OPTIONS = {
+                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+            voice = get(client.voice_clients, guild=ctx.guild)
+            while True:
+                if not voice.is_playing():
+                    with YoutubeDL(YDL_OPTIONS) as ydl:
+                        info = ydl.extract_info(url, download=False)
+                        URL = info['url']
+                        TITLE = info['title']
+                        THUMBNAIL = info['thumbnail']
+                        queue.append(URL)
+                        print(queue)
+                        voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
+                        voice.is_playing()
+                        embed = discord.Embed(title=TITLE, url=url, color=discord.Color.from_rgb(255, 255, 255))
+                        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+                        embed.set_thumbnail(url=THUMBNAIL)
+                        await ctx.send(embed=embed)
+                        break
 
 
 @client.command()
