@@ -65,23 +65,19 @@ async def play(ctx, url):
                     await ctx.send(embed=embed)
         elif voice_client.is_playing():
             queue.append(url)
-            print(url)
             if queue:
                 s = 0
-                for a in queue:
+                for i in queue:
                     with YoutubeDL(YDL_OPTIONS) as ydl:
                         info = ydl.extract_info(queue[s], download=False)
                         TITLE = info['title']
                         THUMBNAIL = info['thumbnail']
                         s += 1
-                        print(queue)
-                        print(s)
                 embed = discord.Embed(title=TITLE, url=queue[s - 1], color=discord.Color.from_rgb(255, 255, 255))
                 embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
                 embed.set_thumbnail(url=THUMBNAIL)
                 embed.set_footer(text="Песня добавлена в очередь")
                 await ctx.send(embed=embed)
-
 
 
 @client.command()
