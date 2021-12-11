@@ -39,58 +39,49 @@ async def roll(ctx):
 queue = []
 
 
-@client.command()
+@client.command(aliases=['p'])
 async def play(ctx, url):
     if not ctx.message.author.voice:
         await ctx.send("Дурак что-ли. зайди сначала в гс")
     else:
         voice_client = get(client.voice_clients, guild=ctx.guild)
+        YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
+        FFMPEG_OPTIONS = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         if voice_client is None or not voice_client.is_connected():
             await ctx.message.author.voice.channel.connect()
-            YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
-            FFMPEG_OPTIONS = {
-                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
             voice = get(client.voice_clients, guild=ctx.guild)
-            while True:
-                if not voice.is_playing():
+            if not voice.is_playing():
+                with YoutubeDL(YDL_OPTIONS) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    URL = info['url']
+                    TITLE = info['title']
+                    THUMBNAIL = info['thumbnail']
+                    voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
+                    voice.is_playing()
+                    embed = discord.Embed(title=TITLE, url=url, color=discord.Color.from_rgb(255, 255, 255))
+                    embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+                    embed.set_thumbnail(url=THUMBNAIL)
+                    await ctx.send(embed=embed)
+        elif voice_client.is_playing():
+            queue.append(url)
+            print(url)
+            if queue:
+                s = 0
+                for a in queue:
                     with YoutubeDL(YDL_OPTIONS) as ydl:
-                        info = ydl.extract_info(url, download=False)
-                        URL = info['url']
+                        info = ydl.extract_info(queue[s], download=False)
                         TITLE = info['title']
                         THUMBNAIL = info['thumbnail']
-                        queue.append(URL)
+                        s += 1
                         print(queue)
-                        voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
-                        voice.is_playing()
-                        embed = discord.Embed(title=TITLE, url=url, color=discord.Color.from_rgb(255, 255, 255))
-                        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
-                        embed.set_thumbnail(url=THUMBNAIL)
-                        await ctx.send(embed=embed)
-                        break
-                else:
-                    await ctx.send('Я уже играю!')
-                    return
-        else:
-            YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
-            FFMPEG_OPTIONS = {
-                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
-            voice = get(client.voice_clients, guild=ctx.guild)
-            while True:
-                if not voice.is_playing():
-                    with YoutubeDL(YDL_OPTIONS) as ydl:
-                        info = ydl.extract_info(url, download=False)
-                        URL = info['url']
-                        TITLE = info['title']
-                        THUMBNAIL = info['thumbnail']
-                        queue.append(URL)
-                        print(queue)
-                        voice.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
-                        voice.is_playing()
-                        embed = discord.Embed(title=TITLE, url=url, color=discord.Color.from_rgb(255, 255, 255))
-                        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
-                        embed.set_thumbnail(url=THUMBNAIL)
-                        await ctx.send(embed=embed)
-                        break
+                        print(s)
+                embed = discord.Embed(title=TITLE, url=queue[s - 1], color=discord.Color.from_rgb(255, 255, 255))
+                embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+                embed.set_thumbnail(url=THUMBNAIL)
+                embed.set_footer(text="Песня добавлена в очередь")
+                await ctx.send(embed=embed)
+
 
 
 @client.command()
